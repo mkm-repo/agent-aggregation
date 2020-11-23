@@ -8,4 +8,10 @@ editor_options:
   chunk_output_type: console
 ---
 
-Welcome to my research website.
+# Effects of Cognitive Agent Aggregation on Information Diffusion
+
+* [ACT-R scaling/aggregation paper](https://docs.google.com/document/d/1lxATa21gMgkbCiSX0g3ZmEQ4SwBxy6tpnpzWZR6ek9M/edit?usp=sharing) is a gdoc for adding thoughts.  Please use headings.
+
+* The GitHub Issues facility might be a good way to coordinate, too.
+
+* Here's a description of the procedure used to generate files relevant to the [initial caveman network](caveman-00.html).

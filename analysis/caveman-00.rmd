@@ -1,0 +1,129 @@
+---
+title: "Baseline Caveman Network"
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+We can use this graph as a baseline to get the ball rolling.  Three csv files are relevant: cave00-nodes, cave00-edges, cave00-history (gzipped).  A description of the graph generation procedure is below the net diagram. You can also examine the code used to generate it in caveman-00.rmd.
+
+
+<!-- ## ```{r global_options, include=FALSE} -->
+<!-- knitr::opts_chunk$set(fig.width=6, fig.height=6, -->
+<!--                       echo=FALSE, warning=FALSE, message=FALSE) -->
+<!-- ``` -->
+
+```{r code, dev=c('png'), echo=FALSE, warning=FALSE, message=FALSE}
+library(workflowr)
+library(fastnet) # for net.caveman() generator (& other generators)
+library(msm)     # for truncated distribution samples, rtnorm()
+
+
+## library(statnet)
+library(tidyverse)
+library(igraph)
+library(tidygraph)
+library(ggraph)
+library(magrittr)
+library(ggnetwork)
+
+
+# Dedicated diffusion packages
+## library(EpiModel)
+## library(netdiffuseR)
+
+set.seed(123)
+
+
+## baseline parameters ##################################################
+
+## net structure
+
+ncaves <- 10   # num cliques
+ncavemen <- 20 # nodes per clique
+
+## Attitude strengths: assume 1 normal distribution for 1 attitude object
+## truncated normal between -1 and +1
+attstr.mean <- 0  # for unbiased draw of
+attstr.sd <- 0.25 # typically weak attitude
+
+## manipulate: cluster the allocation based on structure (caves) or agent attributes
+## or randomly as done here.
+
+## narratives: 5 indicate con (neg valence), 5 pro
+nar.con <- c('con1', 'con2', 'con3', 'con4', 'con5')
+nar.pro <- c('pro1', 'pro2', 'pro3', 'pro4', 'pro5')
+
+## matrix of narratives:  row 1 contains con narratives, row 2 pro
+nar.matrix <- matrix(c(nar.con, nar.pro), nrow = 2, byrow = TRUE)
+
+## ######################################################################
+
+
+## generate baseline caveman graph #####################################
+
+## generate net structure
+x <- net.caveman(ncaves, ncavemen)
+y <- graph_from_adj_list(x, mode = 'all', duplicate = FALSE)
+
+n.nodes <- vcount(y)
+groups <- cluster_louvain(y)
+
+## randomly allocate attitude strength
+y %<>%
+    as_tbl_graph() %>%
+    mutate(
+        name = seq(1:n.nodes) %>% as.character(),
+        valence = rtnorm(n.nodes, attstr.mean, attstr.sd, lower = -1, upper = 1),
+        bias = ifelse(valence < 0, 'con', 'pro'),
+        group = membership(groups) %>% as.character()) # cave membership
+
+
+## plot
+p <- ggraph(y) + geom_edge_link0(color = 'gray')
+p <- p + geom_node_point(aes(color = bias, size = abs(valence)))
+p
+
+
+## ggsave(filename = 'pic/cave-00.png')
+
+## generate histories for each agent ####################################
+## for init of actr agent
+## alternative: simulate based on complex contagion model
+
+pick_topic <- function(a, m, reps = 1) {
+    ## A = directional attitude strength, M = narrative matrix
+    ## flip biased coin to determine stance (con v pro)
+    ## row <- sample(c(1, 2), 1, prob = c(.5 - a, .5 + a))
+    rows <- sample(c(1, 2), reps, replace = TRUE, prob = c((1 - a)/2, (1 + a)/2))
+    ## draw discrete uniform sample of narrative from stance
+    topic <- map_chr(rows, ~sample(m[.,], 1))
+    return(topic)
+}
+
+
+history <- y %>% as_tibble() %>%
+    mutate(past = map(valence, ~pick_topic(., nar.matrix, 100)))
+
+history %<>% unnest(past) %>% group_by(name) %>%
+    mutate(pro = str_detect(past, 'pro'),
+           pro.obs = sum(pro) / n(),
+           con.obs = 1 - pro.obs,
+           valence.obs = pro.obs - con.obs) %>%
+    select(-pro, -pro.obs, -con.obs)
+
+check <- history %>% select(-past) %>% slice(1)
+
+
+## save node, edge, history
+y %N>% as_tibble() %>% write_csv('output/cave00-nodes.csv')
+y %E>% as_tibble() %>% write_csv('output/cave00-edges.csv')
+history %>% write_csv('output/cave00-history.csv.gz')
+```
+
+**Structure.** Caveman graph (e.g., Watts, 1999) with `r ncaves` "caves" (clusters) w/`r ncavemen` members per cave.  Two members of each cave are brokers that connect caves to neighboring caves.  
+
+**Attitude Allocation.** Each agent has an attribute representing the strength of its attitude toward a single attitude object.  Attitude strength ranges from -1 to +1 and is stored as a node attribute called valence.  
+
