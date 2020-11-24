@@ -125,5 +125,7 @@ history %>% write_csv('output/cave00-history.csv.gz')
 
 **Structure.** Caveman graph (e.g., Watts, 1999) with `r ncaves` "caves" (clusters) w/`r ncavemen` members per cave.  Two members of each cave are brokers that connect caves to neighboring caves.  
 
-**Attitude Allocation.** Each agent has an attribute representing the strength of its attitude toward a single attitude object.  Attitude strength ranges from -1 to +1 and is stored as a node attribute called valence.  
+**Attitude Allocation.** Each agent has an attribute representing the strength of its attitude toward a single attitude object.  Attitude strength ranges from -1 to +1 and is stored as a node attribute called valence.
+
+
 
